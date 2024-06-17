@@ -1,4 +1,4 @@
-# ghg_leo_capacity
+# ghg_kessler_capacity
 This repo includes scripts and data that are useful for learning how instantaneous Kessler capacity (IKC) is calculated, and to see how projected GHG emissions will reduce capacity in LEO. 
 
 Each script should be able to run quickly using the provided data files by default. If key parameters are changed in the scripts, they may take some time to generate a new datafile and produce results. Be careful to ensure that data files are re-computed when changes are made to the processing scripts, otherwise those changes may be neglected. 
