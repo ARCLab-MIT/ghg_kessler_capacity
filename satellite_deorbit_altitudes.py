@@ -78,7 +78,6 @@ def main():
         year_s = 365.25*23.9344500*3600
         t_deorbit_target = [5*year_s, 25*year_s]
         labels = ['alt_5y', 'alt_25y']
-        calibrate_offset = [4.305, 0.783] # this calibration offset ensures that the start altitude is the same for the SSPs and the baseline so that a fair comparison can be made.
         start_alt_guess = 500 
         t0_vec = np.arange(2000,2095, 1/12) # time vector of query points
         
@@ -90,7 +89,7 @@ def main():
                     alt_ref[j,i] = minimize(lambda x: np.abs(t_to_deorbit(x, t0_vec[i], B, mu, r_e, dt, ssp_dict, ssp_array_names[j]) - t_deorbit_target[k]), start_alt_guess, method='Nelder-Mead').x
                     print(i/len(t0_vec))
                 if j in [0,1,2]: 
-                    alt_ref[j,:] = alt_ref[j,:] + calibrate_offset[k] # Calibrate by adding a uniform bias to the non-baseline SSPs to correct for interpolation error and make sure that both profiles start at the same level when densities are equivalent (bias is 4.305 km for 25 year and 0.783 km for 5 year).
+                    alt_ref[j,:] = alt_ref[j,:]
                 print('Done with', ssp_array_names[j], 'for', t_deorbit_target[k]/year_s, 'years')
         
             # save alt_ref using pickle
