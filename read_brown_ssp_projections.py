@@ -3,14 +3,12 @@ FILE DESCRIPTION: This script reads in the NetCDF file containing the atmospheri
 forecasts as were computed in Brown et al (2024) and stored here: https://edata.bham.ac.uk/1075/.
 Future density reductions (in multipliers compared to the year 2000) are computed according to the 
 shared socioeconomic pathways (SSPs) and assuming solar cycles similar to the past sixty years. A
-sinusoid is fit to the historical record of F10.7 to generate a projected solar cycle.  
-A slight extrapolation beyond the modeled upper bound of CO2 concentration is necessary for the years
-2080-2100 for the SSP-8.5 case. 
+sinusoid is fit to the historical record of F10.7 to generate a projected solar cycle. 
 
-The output of this script is stored in data/dens_forecast_ssp.mat, which contains the density profiles 
-of interest for the rest of the paper.
+The output of this script is stored in data/dens_forecast_ssp_v2_msis2.pkl, which contains the density profiles 
+of interest for the rest of the paper. This data file is used by the other scripts to generate plots.
 
-05/01/2024 - William Parker
+10/10/2024 - William Parker
 '''
 
 import netCDF4 as nc
@@ -26,7 +24,10 @@ from scipy.optimize import curve_fit
 import pandas as pd
 from matplotlib.colors import LogNorm
 import matplotlib.ticker as ticker
-
+import certifi
+from pymsis import msis
+import pickle as pkl
+import matplotlib.dates as mdates
 # make arial font
 plt.rcParams['font.sans-serif'] = "Arial"
 plt.rcParams['font.family'] = "sans-serif"
@@ -37,13 +38,16 @@ plt.rcParams['xtick.color'] = 'gray'
 plt.rcParams['ytick.color'] = 'gray'
 # make the box around the plot gray
 plt.rcParams['axes.edgecolor'] = 'gray'
+os.environ["SSL_CERT_FILE"] = certifi.where()
 
+# define the path to the NetCDF file with the scaling factors
 file = "data/DEN-CO2scaling2000-2500_v2.nc"
+
 
 #%% 
 def main(): 
     
-    processed_file = 'data/dens_forecast_sspX.mat'
+    processed_file = 'data/dens_forecast_ssp_v2_msis2.pkl'
     
     if not os.path.exists(processed_file):
         # Unload variables
@@ -82,10 +86,6 @@ def main():
         f107_cs = scipy.interpolate.CubicSpline(date_hist_year+2000, f107_hist, )
         f107_rs = f107_cs(year_rs)  
         
-        # plt.figure()
-        # plt.semilogy(year_rs, f107_rs)
-        # plt.show()  
-        
         # if any value exceeds the maximum value of f107 in the input, set it to the maximum value
         f107_rs = np.array([f107_rs[i] if f107_rs[i] < np.max(f107) else np.max(f107) for i in range(len(f107_rs))])
         # repeat for minimum
@@ -109,7 +109,7 @@ def main():
         #     plt.plot(year , ssp5_85[i,:,4].T)
         # plt.show()
         
-        # perform linear extrapolation of ssp5_85 to 2100 
+        # perform linear extrapolation of ssp5_85 to 2100 (provided scaling factors cut out at a slightly lower CO2 concentration than the max value). 
         for i in range(len(alt)):
             for j in range(len(year)):
                 for k in range(len(f107)):
@@ -122,7 +122,6 @@ def main():
         #     plt.plot(year , ssp5_85[i,:,0].T)
         # plt.show()
             
-        
         # Create the interpolator
         interp_ssp1_19 = RegularGridInterpolator((alt, year, f107), np.array(ssp1_19))
         interp_ssp1_26 = RegularGridInterpolator((alt, year, f107), np.array(ssp1_26))
@@ -135,7 +134,6 @@ def main():
         interp_ssp5_85 = RegularGridInterpolator((alt, year, f107), np.array(ssp5_85))
         
         interp_dens = RegularGridInterpolator((f107, alt), np.log(dens))
-        # interp_dens = scipy.interpolate.interp2d(f107_dens_grid,alt_dens_grid ,np.log(dens),  kind='linear')
         
         # plt.figure()
         dens_vec = np.zeros(len(alt_rs))
@@ -144,11 +142,6 @@ def main():
         dens_vec_real = np.zeros(len(f107))
         for j in range(len(f107)):
             dens_vec_real[j] = interp_dens([f107[j], alt[5]])
-        
-        
-        # plt.semilogy(alt_rs, np.exp(dens_vec), 'r.')
-        # plt.semilogy(f107, np.exp(dens_vec_real), 'r')
-        # plt.show()
         
         dens_ssp1_19_rs = np.zeros((len(year_rs), len(alt_rs)))
         dens_ssp1_26_rs = np.zeros((len(year_rs), len(alt_rs)))
@@ -186,26 +179,25 @@ def main():
                 print(j/len(year_rs))
         
         # now we should have density as a function of time and altitude for each case
-        # save each profile to a mat file
-        scipy.io.savemat('data/dens_forecast_ssp.mat', mdict={'dens_ssp1_19_rs': dens_ssp1_19_rs, 'dens_ssp1_26_rs': dens_ssp1_26_rs, 'dens_ssp2_45_rs': dens_ssp2_45_rs, 'dens_ssp3_70_rs': dens_ssp3_70_rs, 'dens_ssp3_70_lowNTCF_rs': dens_ssp3_70_lowNTCF_rs, 'dens_ssp4_34_rs': dens_ssp4_34_rs, 'dens_ssp4_60_rs': dens_ssp4_60_rs, 'dens_ssp5_34_over_rs': dens_ssp5_34_over_rs, 'dens_ssp5_85_rs': dens_ssp5_85_rs, 'dens_rs':dens_rs, 'alt_rs': alt_rs, 'year_rs': year_rs})
-    
+        # save each profile to a pkl file
+        with open(processed_file, 'wb') as f:
+            pkl.dump([dens_ssp1_19_rs, dens_ssp1_26_rs, dens_ssp2_45_rs, dens_ssp3_70_rs, dens_ssp3_70_lowNTCF_rs, dens_ssp4_34_rs, dens_ssp4_60_rs, dens_ssp5_34_over_rs, dens_ssp5_85_rs, dens_rs, alt_rs, year_rs], f)
     else: 
         plot_profiles(processed_file)
         
 def plot_profiles(processed_file):
-    data = scipy.io.loadmat(processed_file)
-    # dens_ssp1_19_rs = data['dens_ssp1_19_rs']
-    dens_ssp1_26_rs = data['dens_ssp1_26_rs']
-    dens_ssp2_45_rs = data['dens_ssp2_45_rs']
-    dens_ssp3_70_rs = data['dens_ssp3_70_rs']
-    # dens_ssp3_70_lowNTCF_rs = data['dens_ssp3_70_lowNTCF_rs']
-    # dens_ssp4_34_rs = data['dens_ssp4_34_rs']
-    # dens_ssp4_60_rs = data['dens_ssp4_60_rs']
-    # dens_ssp5_34_over_rs = data['dens_ssp5_34_over_rs']
-    dens_ssp5_85_rs = data['dens_ssp5_85_rs']
-    alt_rs = data['alt_rs']
-    year_rs = data['year_rs']
-    dens_rs = data['dens_rs']
+
+    # load pkl file with the density profiles
+    with open(processed_file, 'rb') as f:
+        data = pkl.load(f)
+    dens_ssp1_26_rs = data[1]
+    dens_ssp2_45_rs = data[2]
+    dens_ssp3_70_rs = data[3]
+    dens_ssp5_85_rs = data[8]
+    alt_rs = data[10]
+    year_rs = data[11]
+    dens_rs = data[9]
+
     
     # make a figure that plots the atmospheric density over time for each altitude for each SSP
     # plt.figure()
@@ -222,61 +214,63 @@ def plot_profiles(processed_file):
     
     
     # plot dens_ssp/dens_rs for each ssp and show cases at 400, 600, and 800 km
+    plt.figure()
+    plt.subplot(1,3,1)
+    alt_plt = 200
+    plt.plot(year_rs.T, dens_ssp1_26_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#118AB2', label = 'SSP1-26')
+    plt.plot(year_rs.T, dens_ssp2_45_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#06D6A0', label = 'SSP2-45')
+    plt.plot(year_rs.T, dens_ssp3_70_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#FFD166', label = 'SSP3-70')
+    plt.plot(year_rs.T, dens_ssp5_85_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#EF476F', label = 'SSP5-85')
+    plt.ylim([0,1])
+    plt.xlabel('Year')
+    plt.title('200 km')
+    plt.ylabel('Density Multitplier')
+    plt.grid(axis = 'both', color = 'gainsboro', linewidth = 0.5)
+    plt.legend()
     
-    # plt.figure()
-    # plt.subplot(1,3,1)
-    # alt_plt = 200
-    # plt.plot(year_rs.T, dens_ssp1_26_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#118AB2', label = 'SSP1-26')
-    # plt.plot(year_rs.T, dens_ssp2_45_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#06D6A0', label = 'SSP2-45')
-    # plt.plot(year_rs.T, dens_ssp3_70_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#FFD166', label = 'SSP3-70')
-    # plt.plot(year_rs.T, dens_ssp5_85_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#EF476F', label = 'SSP5-85')
-    # plt.ylim([0,1])
-    # plt.xlabel('Year')
-    # plt.title('200 km')
-    # plt.ylabel('Density Multitplier')
-    # plt.grid(axis = 'both', color = 'gainsboro', linewidth = 0.5)
-    # plt.legend()
+    plt.subplot(1,3,2)
+    alt_plt = 500
+    plt.plot(year_rs.T, dens_ssp1_26_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#118AB2', label = 'SSP1-26')
+    plt.plot(year_rs.T, dens_ssp2_45_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#06D6A0', label = 'SSP2-45')
+    plt.plot(year_rs.T, dens_ssp3_70_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#FFD166', label = 'SSP3-70')
+    plt.plot(year_rs.T, dens_ssp5_85_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#EF476F', label = 'SSP5-85')
+    plt.xlabel('Year')
+    plt.title('500 km')
+    plt.ylim([0,1])
+    # plt.ylabel('Density [kg/m^3]')
+    plt.grid(axis = 'both', color = 'gainsboro', linewidth = 0.5)
     
-    # plt.subplot(1,3,2)
-    # alt_plt = 500
-    # plt.plot(year_rs.T, dens_ssp1_26_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#118AB2', label = 'SSP1-26')
-    # plt.plot(year_rs.T, dens_ssp2_45_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#06D6A0', label = 'SSP2-45')
-    # plt.plot(year_rs.T, dens_ssp3_70_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#FFD166', label = 'SSP3-70')
-    # plt.plot(year_rs.T, dens_ssp5_85_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#EF476F', label = 'SSP5-85')
-    # plt.xlabel('Year')
-    # plt.title('500 km')
-    # plt.ylim([0,1])
-    # # plt.ylabel('Density [kg/m^3]')
-    # plt.grid(axis = 'both', color = 'gainsboro', linewidth = 0.5)
-    
-    # plt.subplot(1,3,3)
-    # alt_plt = 900
-    # plt.plot(year_rs.T, dens_ssp1_26_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#118AB2', label = 'SSP1-26')
-    # plt.plot(year_rs.T, dens_ssp2_45_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#06D6A0', label = 'SSP2-45')
-    # plt.plot(year_rs.T, dens_ssp3_70_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#FFD166', label = 'SSP3-70')
-    # plt.plot(year_rs.T, dens_ssp5_85_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#EF476F', label = 'SSP5-85')
-    # plt.xlabel('Year')
-    # plt.ylim([0,1])
-    # # plt.ylabel('Density Multiplier')
-    # plt.title('900 km')
-    # plt.grid(axis = 'both', color = 'gainsboro', linewidth = 0.5)
-    # plt.show()
+    plt.subplot(1,3,3)
+    alt_plt = 900
+    plt.plot(year_rs.T, dens_ssp1_26_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#118AB2', label = 'SSP1-26')
+    plt.plot(year_rs.T, dens_ssp2_45_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#06D6A0', label = 'SSP2-45')
+    plt.plot(year_rs.T, dens_ssp3_70_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#FFD166', label = 'SSP3-70')
+    plt.plot(year_rs.T, dens_ssp5_85_rs[:,np.argmin(np.abs(alt_plt-alt_rs))]/dens_rs[:,np.argmin(np.abs(alt_plt-alt_rs))], '#EF476F', label = 'SSP5-85')
+    plt.xlabel('Year')
+    plt.ylim([0,1])
+    # plt.ylabel('Density Multiplier')
+    plt.title('900 km')
+    plt.grid(axis = 'both', color = 'gainsboro', linewidth = 0.5)
+    plt.show()
     
     # make a subplot for each ssp case, showing the density multiplier as a function of altitude for each year    
     colors = ['#00798c', '#edae49', '#d1495b', 'k', '#6a4c93']
     plt.figure(figsize = (10,3))
     plt.subplot(1,3,1)
+    start_year = 1947.7
+    end_year = 2105
+    interval = 10.93
+    current_year = start_year
+    while current_year <= end_year:
+        plt.axvline(current_year, color='gainsboro', linestyle='-', linewidth=0.5)
+        current_year += interval
     plt.plot(year_rs.T, dens_ssp1_26_rs[:,np.argmin(np.abs(300-alt_rs))]/dens_rs[:,np.argmin(np.abs(300-alt_rs))], colors[0], label = '300')
     plt.plot(year_rs.T, dens_ssp1_26_rs[:,np.argmin(np.abs(1000-alt_rs))]/dens_rs[:,np.argmin(np.abs(1000-alt_rs))], colors[0], label = '1000', alpha = 0.4)
     plt.axvspan(2000, 2023.5, color = 'whitesmoke')
     plt.ylim([0,1])
     plt.xlim([2000, 2100])
-    # remove tick marks from y axis
     plt.tick_params(axis='y', which='both', left=False, right=False)
-    # remove tick marks from x axis
-    # plt.tick_params(axis='x', which='both', bottom=False, top=False)
     plt.xlabel('Year')
-    # plt.title('SSP1-26')
     plt.legend(title = 'Altitude [km]', loc = 'lower left')
     plt.ylabel('Density Multiplier')
     plt.grid(axis = 'y', color = 'gainsboro', linewidth = 0.5)
@@ -284,19 +278,21 @@ def plot_profiles(processed_file):
 
     
     plt.subplot(1,3,2)
+    start_year = 1947.7
+    end_year = 2105
+    interval = 10.93
+    current_year = start_year
+    while current_year <= end_year:
+        plt.axvline(current_year, color='gainsboro', linestyle='-', linewidth=0.5)
+        current_year += interval
     plt.plot(year_rs.T, dens_ssp2_45_rs[:,np.argmin(np.abs(300-alt_rs))]/dens_rs[:,np.argmin(np.abs(300-alt_rs))], colors[1], label = '300')
     plt.plot(year_rs.T, dens_ssp2_45_rs[:,np.argmin(np.abs(1000-alt_rs))]/dens_rs[:,np.argmin(np.abs(1000-alt_rs))], colors[1], label = '1000', alpha = 0.4)
     plt.axvspan(2000, 2023.5, color = 'whitesmoke')
     plt.ylim([0,1])
     plt.xlim([2000, 2100])
-    # remove tick marks from y axis
     plt.tick_params(axis='y', which='both', left=False, right=False)
-    # remove tick marks from x axis
-    # plt.tick_params(axis='x', which='both', bottom=False, top=False)
     plt.xlabel('Year')
-    # plt.title('SSP2-45')
     plt.legend(title = 'Altitude [km]', loc = 'lower left')
-    # plt.ylabel('Density Multiplier')
     plt.grid(axis = 'y', color = 'gainsboro', linewidth = 0.5)
     # get rid of x axis labels and share with the first plot
     plt.setp(plt.gca().get_yticklabels(), visible=False)
@@ -304,19 +300,21 @@ def plot_profiles(processed_file):
     plt.xticks(rotation=45)
     
     plt.subplot(1,3,3)
+    start_year = 1947.7
+    end_year = 2105
+    interval = 10.93
+    current_year = start_year
+    while current_year <= end_year:
+        plt.axvline(current_year, color='gainsboro', linestyle='-', linewidth=0.5)
+        current_year += interval
     plt.plot(year_rs.T, dens_ssp5_85_rs[:,np.argmin(np.abs(300-alt_rs))]/dens_rs[:,np.argmin(np.abs(300-alt_rs))], colors[2], label = '300')
     plt.plot(year_rs.T, dens_ssp5_85_rs[:,np.argmin(np.abs(1000-alt_rs))]/dens_rs[:,np.argmin(np.abs(1000-alt_rs))], colors[2], label = '1000', alpha = 0.4)
     plt.axvspan(2000, 2023.5, color = 'whitesmoke')
     plt.ylim([0,1])
     plt.xlim([2000, 2100])
-    # remove tick marks from y axis
     plt.tick_params(axis='y', which='both', left=False, right=False)
-    # remove tick marks from x axis
-    # plt.tick_params(axis='x', which='both', bottom=False, top=False)
     plt.xlabel('Year')
-    # plt.title('SSP1-26')
     plt.legend(title = 'Altitude [km]', loc = 'lower left')
-    # plt.ylabel('Density Multiplier')
     plt.grid(axis = 'y', color = 'gainsboro', linewidth = 0.5)
     # get rid of x axis labels and share with the first plot
     plt.setp(plt.gca().get_yticklabels(), visible=False)
@@ -326,10 +324,17 @@ def plot_profiles(processed_file):
     
     # plot the density at 600 km for each SSP and the baseline
     plt.figure(figsize = (8,4))
+    start_year = 1947.7
+    end_year = 2105
+    interval = 10.93
+    current_year = start_year
+    while current_year <= end_year:
+        plt.axvline(current_year, color='gainsboro', linestyle='-', linewidth=0.5)
+        current_year += interval
     plt.semilogy(year_rs.T, dens_rs[:,np.argmin(np.abs(600-alt_rs))], color = 'k', label = 'Baseline', linestyle = ':')
-    plt.semilogy(year_rs.T, dens_ssp1_26_rs[:,np.argmin(np.abs(600-alt_rs))],color = colors[0], label = 'SSP1-26')
-    plt.semilogy(year_rs.T, dens_ssp2_45_rs[:,np.argmin(np.abs(600-alt_rs))], color = colors[1], label = 'SSP2-45')
-    plt.semilogy(year_rs.T, dens_ssp5_85_rs[:,np.argmin(np.abs(600-alt_rs))], color = colors[2], label = 'SSP5-85')
+    plt.semilogy(year_rs.T, dens_ssp1_26_rs[:,np.argmin(np.abs(600-alt_rs))],color = colors[0], label = 'SSP1-2.6')
+    plt.semilogy(year_rs.T, dens_ssp2_45_rs[:,np.argmin(np.abs(600-alt_rs))], color = colors[1], label = 'SSP2-4.5')
+    plt.semilogy(year_rs.T, dens_ssp5_85_rs[:,np.argmin(np.abs(600-alt_rs))], color = colors[2], label = 'SSP5-8.5')
     plt.semilogy(year_rs.T, dens_rs[:,np.argmin(np.abs(600-alt_rs))], color = 'k', linestyle = ':')
     plt.tick_params(axis='y', which='both', left=False, right=False)
     # shade everything from 1995 to 2023.5 in whitesmoke
@@ -337,8 +342,9 @@ def plot_profiles(processed_file):
     plt.xlim([1995,2105])
     plt.xlabel('Year')
     plt.ylabel('Atmospheric Mass Density [$\mathregular{kg/m^3}$]')
-    plt.grid(axis = 'y', color = 'gainsboro')
+    plt.grid(axis = 'y', color = 'gainsboro')    
     plt.legend()
+    plt.xlim([2000,2100])
     plt.tight_layout()
     plt.show()
     
@@ -379,11 +385,12 @@ def plot_ssp_arrays(ssp_arrays, year_rs, alt_rs, ssp_array_names, levels=[1e-14,
     plt.show()
 
 def compute_dens(f107, alt):
-    # run NRLMSISE-00 for each year in f107_year_fit_proj with the alts from ALT -- sample across many lats and lons to get global average
+    # run NRLMSISE-2.0 for each year in f107_year_fit_proj with the alts from ALT -- sample across many lats and lons to get global average
     # get the multiplier for each year and altitude from NRLMSISE-00 compared to 2000, then compare to the RCP multipliers -- how off are they from where the natural deviation is?
     lats = np.arange(-90,90,30)
     lons = np.arange(0,360,30)
     ap = 0
+    aps = [[0]*7]
     dens_p = np.zeros((len(lats), len(lons), len(alt), len(f107)))
     dens = np.zeros((len(f107),len(alt)))
     for i in range(len(f107)):
@@ -391,8 +398,8 @@ def compute_dens(f107, alt):
             for j in range(len(lats)):
                 for k in range(len(lons)):
                     # query nrlmsise-00 for this combination of lat, lon, and alt
-                    nrl00 = msise_model(dt.datetime(2020,1,1), alt[m], lats[j], lons[k], f107[i], f107[i], ap)
-                    dens_p[j,k,m,i] = nrl00[0][5]*1e2**3/1e3
+                    data =msis.run(dt.datetime(2000,1,1, 0, 0, 0), float(lats[j]), float(lons[k]), float(alt[m]), float(f107[i]), float(f107[i]), aps, version=2)
+                    dens_p[j,k,m,i] = data[0][0]
 
             # take average dens_p for each altitude each year
             dens[i,m] = np.average(dens_p[:,:,m,i])
@@ -400,9 +407,10 @@ def compute_dens(f107, alt):
     return dens
                 
 def project_f107():
-    # load SW-All data from mat file
+    # load SW-All data from csv file
     column_to_read = 'F10.7_ADJ'
-    df = pd.read_csv('../COLA/SW-All.csv', usecols=[column_to_read])
+    df = pd.read_csv('data/SW-All.csv', usecols=[column_to_read])
+
     f107_hist = np.array(df[column_to_read])[:24010]
     
     # f107_hist = data['sw_data'][1:-1400,26]
@@ -427,6 +435,9 @@ def project_f107():
     # Fitting the data to the sinusoidal function
     x0 = np.array([0.8, 1/(11*365), 0, 2.15])
     params, covariance = curve_fit(sinusoid, dt_hist, np.log10(f107_hist), p0 = x0)
+
+    # get frequency in years from params
+    freq = 1/(params[1]*365.25)
 
     # Getting the fitted curve
     fitted_curve = sinusoid(dt_hist, *params)
@@ -484,20 +495,59 @@ def project_f107():
     # plt.grid(axis = 'both', color = 'whitesmoke')
     # plt.show()
     
-    plt.figure(figsize = (3,3))
-    plt.plot(date_hist, f107_hist_movmean, color = 'darkgray', label = 'Observed', linewidth = 0.7)
-    plt.plot(date_rs_all, f107_rs_all, 'r--', label = 'Fitted', linewidth = 0.7)
-    plt.plot(date_hist_combined, f107_hist_combined, 'k-', label = 'Modeled', linewidth = 0.7)
-    # fill a gray background until 2023-07
-    plt.axvspan(dt.datetime(1955,1,1), dt.datetime(2023,7,1), color = 'whitesmoke')
+    plt.figure(figsize=(7, 3))
+    plt.plot(date_hist, f107_hist_movmean, color='darkgray', label='Observed', linewidth=0.7)
+    plt.plot(date_rs_all, f107_rs_all, 'r--', label='Fitted', linewidth=0.7)
+    plt.plot(date_hist_combined, f107_hist_combined, 'k-', label='Modeled', linewidth=1)
+    # Fill a gray background until 2023-07
+    plt.axvspan(dt.datetime(1955, 1, 1), dt.datetime(2023, 7, 1), color='whitesmoke')
     plt.xlabel('Year')
     plt.ylabel('F$_{10.7}$ [sfu]')
-    plt.xlim([dt.datetime(1955,1,1), dt.datetime(2105,1,1)])
-    plt.grid(axis = 'both', color = 'gainsboro', linewidth = 0.5)
+    plt.xlim([dt.datetime(1955, 1, 1), dt.datetime(2105, 1, 1)])
+    plt.grid(axis='y', color='gainsboro', linewidth=0.5)
+
+    # Calculate positions for vertical lines every 10.93 years
+    start_year = 1947.7
+    end_year = 2105
+    interval = freq
+    current_year = start_year
+
+    while current_year <= end_year:
+        # given the year in decimal format, create the corresponding datetime object with the months and days necessary to account for the decimal
+        year = int(current_year)
+        month = int((current_year - year) * 12) + 1
+        day = 1
+        plt.axvline(dt.datetime(year, month, day), color='gainsboro', linestyle='-', linewidth=0.5)
+        current_year += interval
+
     plt.legend()
+    # get rid of outer boundary of plot
+    plt.gca().spines['top'].set_visible(False)
+    plt.gca().spines['right'].set_visible(False)
+    plt.gca().spines['bottom'].set_visible(False)
+    plt.gca().spines['left'].set_visible(False)
     plt.tight_layout()
     plt.show()
-    
+
+    # Convert dates to numerical format for plotting
+    date_num = mdates.date2num(date_hist_combined)
+
+    # Interpolate date_hist_combined and f107_hist_combined to year_rs
+    f107_cs = scipy.interpolate.CubicSpline(date_num, f107_hist_combined)
+    date_rs_all = np.linspace(date_num[0], date_num[-1], 1000)  # Example range for interpolation
+    f107_hist = f107_cs(date_rs_all)
+    date_hist = mdates.num2date(date_rs_all)
+
+    # add new axis to f107_hist
+    f107_hist = np.expand_dims(f107_hist, axis=1)
+
+    plt.figure()
+    plt.imshow(f107_hist.T, aspect='auto', extent=[date_hist[0], date_hist[-1], 0, 1], cmap = 'gray_r')
+    plt.xlabel('Year')
+    plt.ylabel('F10.7 [sfu]')
+    plt.show()
+
+
     return date_hist_combined, f107_hist_combined
 
 if __name__ == '__main__':

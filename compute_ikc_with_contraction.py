@@ -22,6 +22,7 @@ from scipy.io import loadmat, savemat
 from multiprocessing import Pool, cpu_count
 from joblib import Parallel, delayed
 import time 
+import pickle as pkl
 
 # set font to arial
 plt.rcParams['font.family'] = 'Arial'
@@ -63,21 +64,43 @@ def main():
 
     n_frag = np.array([[497.7384,116.0473],[116.0473,116.0473]]) # values taken from MOCAT SSEM using NASA collision breakup model and sat/deb radii and masses (masses presumed from BC). 
 
+
+    # load processed file with time and altitude-resolved density profiles for each of the SSPs. 
+    ip_file = 'data/dens_forecast_ssp_v2_msis2.pkl'
+    op_file = 'data/opt_mult_contraction_ssp_hd_v2.mat'
+
+    # load data from pkl
+    # with open(processed_file, 'wb') as f:
+    # pkl.dump([dens_ssp1_19_rs, dens_ssp1_26_rs, dens_ssp2_45_rs, dens_ssp3_70_rs, dens_ssp3_70_lowNTCF_rs, dens_ssp4_34_rs, dens_ssp4_60_rs, dens_ssp5_34_over_rs, dens_ssp5_85_rs, dens_rs, alt_rs, year_rs], f)
+    data = pkl.load(open(ip_file, 'rb'))
+    dens_ssp1_19_rs = data[0]
+    dens_ssp1_26_rs = data[1]
+    dens_ssp2_45_rs = data[2]
+    dens_ssp3_70_rs = data[3]
+    dens_ssp3_70_lowNTCF_rs = data[4]
+    dens_ssp4_34_rs = data[5]
+    dens_ssp4_60_rs = data[6]
+    dens_ssp5_34_over_rs = data[7]
+    dens_ssp5_85_rs = data[8]
+    dens_rs = data[9]
+    alt_rs = data[10]
+    year_rs = data[11]
+    
     # load dens_contraction
-    ssp_dens = loadmat('data/dens_forecast_ssp.mat')
-    dens_ssp1_26 = ssp_dens['dens_ssp1_26_rs']
-    dens_ssp2_45 = ssp_dens['dens_ssp2_45_rs']
-    dens_ssp5_85 = ssp_dens['dens_ssp5_85_rs']
-    dens_baseline = ssp_dens['dens_rs']
-    alt_rs = ssp_dens['alt_rs']
-    year_rs = ssp_dens['year_rs']
+    # ssp_dens = loadmat('data/dens_forecast_ssp.mat')
+    # dens_ssp1_26 = ssp_dens['dens_ssp1_26_rs']
+    # dens_ssp2_45 = ssp_dens['dens_ssp2_45_rs']
+    # dens_ssp5_85 = ssp_dens['dens_ssp5_85_rs']
+    # dens_baseline = ssp_dens['dens_rs']
+    # alt_rs = ssp_dens['alt_rs']
+    # year_rs = ssp_dens['year_rs']
     
     dens_profile = [ 'dynamic_baseline', 'ssp1_26', 'ssp2_45', 'ssp5_85']
     dens_contraction = {}
-    dens_contraction['dynamic_baseline'] = dens_baseline
-    dens_contraction['ssp1_26'] = dens_ssp1_26
-    dens_contraction['ssp2_45'] = dens_ssp2_45
-    dens_contraction['ssp5_85'] = dens_ssp5_85
+    dens_contraction['dynamic_baseline'] = dens_rs
+    dens_contraction['ssp1_26'] = dens_ssp1_26_rs
+    dens_contraction['ssp2_45'] = dens_ssp2_45_rs
+    dens_contraction['ssp5_85'] = dens_ssp5_85_rs
     dens_contraction['alt_rs'] = alt_rs
     dens_contraction['year_rs'] = year_rs
     
@@ -86,7 +109,7 @@ def main():
 
     # check to see if opt_mult.mat exists, and if so, load variables (make sure this is the opt_mult file you want!)
     try:
-        data = loadmat('data/opt_mult_contraction_ssp_hd.mat')
+        data = loadmat(op_file)
         s_per_bin = data['s_per_bin']
         n_per_bin = data['n_per_bin']
         
@@ -109,7 +132,7 @@ def main():
             mult_vec[i,:,:,:], s_per_bin[i,:,:], n_per_bin[i,:,:] = results[i]
         
         # save the optimal mult values and the s_per_bin and n_per_bin values
-        savemat('data/opt_mult_contraction_ssp_hd.mat', {'opt_mult': mult_vec, 's_per_bin': s_per_bin, 'n_per_bin': n_per_bin, 'bins': bins, 'mult_vec': mult_vec})
+        savemat(op_file, {'opt_mult': mult_vec, 's_per_bin': s_per_bin, 'n_per_bin': n_per_bin, 'bins': bins, 'mult_vec': mult_vec})
     
     s_sum_per_year = np.zeros((len(year), len(dens_profile)))
     n_sum_per_year = np.zeros((len(year), len(dens_profile)))
@@ -120,6 +143,17 @@ def main():
             
     # plot the s_sum_per_year values for each dens_profile over each year
     plt.figure(figsize = (6,5))
+    start_year = 1947.7
+    end_year = 2105
+    interval = 10.93
+    current_year = start_year
+    while current_year <= end_year:
+        # given the year in decimal format, create the corresponding datetime object with the months and days necessary to account for the decimal
+        # year = int(current_year)
+        # month = int((current_year - year) * 12) + 1
+        # day = 1
+        plt.axvline(current_year, color='gainsboro', linestyle='-', linewidth=0.5)
+        current_year += interval
     colors =  ['k', '#00798c', '#edae49', '#d1495b']
     dens_profile_plot = [ 'Baseline', 'SSP1-26', 'SSP2-45', 'SSP5-85']
     for i in range(len(dens_profile)):
@@ -136,6 +170,7 @@ def main():
     plt.tick_params(axis='y', which='both', left=False, right=False)
     plt.xlabel('Year')
     plt.ylabel('Number of Satellites')
+    plt.xlim([2000,2100])
     plt.tight_layout()
     plt.show()
             
@@ -304,8 +339,8 @@ def deb_decay_t_per_bin(bins, B, mu, r_e, dens_contraction, dens_profile, year, 
 
 def den(h_ellp, dens_contraction, dens_profile, year, dens_mult = 1):
     # commpute the distribution of these objects as a function of time, assuming a static exponential atmosphere
-    year_idx = np.argmin(np.abs(dens_contraction['year_rs'][0] - year))
-    alt_idx = np.argmin(np.abs(dens_contraction['alt_rs'][0] - h_ellp))
+    year_idx = np.argmin(np.abs(dens_contraction['year_rs'] - year))
+    alt_idx = np.argmin(np.abs(dens_contraction['alt_rs'] - h_ellp))
     if dens_profile == 'dynamic_baseline':
         dens_mtx = dens_contraction['dynamic_baseline']
         dens = dens_mtx[year_idx, alt_idx]*dens_mult
