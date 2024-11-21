@@ -10,7 +10,7 @@ This script is computationally intensive and may take some time to run on system
 the time variable 'year' to cover less time or make larger timesteps will help to get output in reasonable time. Parallel 
 computing toolboxes are used to speed up the computation as best as possible. 
 
-05/01/2024 - William Parker
+11/20/2024 - William Parker
 '''
 
 import numpy as np
@@ -66,8 +66,8 @@ def main():
 
 
     # load processed file with time and altitude-resolved density profiles for each of the SSPs. 
-    ip_file = 'data/dens_forecast_ssp_v2_msis2.pkl'
-    op_file = 'data/opt_mult_contraction_ssp_hd_v2.mat'
+    ip_file = 'data/dens_forecast_ssp_v3_msis2.pkl'
+    op_file = 'data/opt_mult_contraction_ssp_hd_v3.mat'
 
     # load data from pkl
     # with open(processed_file, 'wb') as f:
@@ -134,12 +134,21 @@ def main():
         # save the optimal mult values and the s_per_bin and n_per_bin values
         savemat(op_file, {'opt_mult': mult_vec, 's_per_bin': s_per_bin, 'n_per_bin': n_per_bin, 'bins': bins, 'mult_vec': mult_vec})
     
+
+    # Determine the altitude range that we're interested in plotting (note: altitudes need to match bins values exactly)
+    alt_min = 200
+    alt_max = 1000
+    idx_alt_min = np.where(bins == alt_min)[0][0]
+    idx_alt_max = np.where(bins == alt_max)[0][0]
+    alt_vec = np.arange(idx_alt_min, idx_alt_max+1)
+
     s_sum_per_year = np.zeros((len(year), len(dens_profile)))
     n_sum_per_year = np.zeros((len(year), len(dens_profile)))
+
     for i in range(len(year)):
-        for j in range(len(dens_profile)):
-            s_sum_per_year[i,j] = np.sum(s_per_bin[i,j,:])
-            n_sum_per_year[i,j] = np.sum(n_per_bin[i,j,:])
+        for j in range(len(dens_profile)): #np.arange(idx_alt_min, idx_alt_max+1):
+            s_sum_per_year[i,j] = np.sum(s_per_bin[i,j,idx_alt_min:idx_alt_max + 1])
+            n_sum_per_year[i,j] = np.sum(n_per_bin[i,j,idx_alt_min:idx_alt_max + 1])
             
     # plot the s_sum_per_year values for each dens_profile over each year
     plt.figure(figsize = (6,5))
@@ -155,7 +164,8 @@ def main():
         plt.axvline(current_year, color='gainsboro', linestyle='-', linewidth=0.5)
         current_year += interval
     colors =  ['k', '#00798c', '#edae49', '#d1495b']
-    dens_profile_plot = [ 'Baseline', 'SSP1-26', 'SSP2-45', 'SSP5-85']
+    dens_profile_plot = [ 'Baseline', 'SSP1-2.6', 'SSP2-4.5', 'SSP5-8.5']
+
     for i in range(len(dens_profile)):
         # plt.figure(figsize = (6,5))
         if i == 0:
@@ -166,13 +176,16 @@ def main():
     plt.plot(year, s_sum_per_year[:,0], 'k:', linewidth = 1)
     plt.axvspan(2000, 2023.5, color = 'whitesmoke')
     plt.legend()
+    plt.title(str(alt_min) +' - ' + str(alt_max) + ' km')
     plt.grid(axis = 'y', color = 'lightgray')
     plt.tick_params(axis='y', which='both', left=False, right=False)
     plt.xlabel('Year')
-    plt.ylabel('Number of Satellites')
+    plt.ylabel('Number of Characteristic Satellites')
     plt.xlim([2000,2100])
+    y_max = np.max(s_sum_per_year)
+    plt.ylim([0, y_max*1.1])
     plt.tight_layout()
-    plt.show()
+    plt.show()    
             
     plt.figure()
     plt.grid(axis = 'both', color = 'lightgray', linewidth = 0.25)
@@ -181,7 +194,7 @@ def main():
     plt.yscale('log')
     plt.xlabel('Shell Lower Altitude [km]')
     plt.legend()
-    plt.ylabel('Number of Satellites')    
+    plt.ylabel('Number of Characteristic Satellites')    
     plt.show()
 
     

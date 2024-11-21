@@ -41,13 +41,13 @@ plt.rcParams['axes.edgecolor'] = 'gray'
 os.environ["SSL_CERT_FILE"] = certifi.where()
 
 # define the path to the NetCDF file with the scaling factors
-file = "data/DEN-CO2scaling2000-2500_v2.nc"
+file = "data/DEN-CO2scaling2000-2100_v3.nc"
 
 
 #%% 
 def main(): 
     
-    processed_file = 'data/dens_forecast_ssp_v2_msis2.pkl'
+    processed_file = 'data/dens_forecast_ssp_v3_msis2.pkl'
     
     if not os.path.exists(processed_file):
         # Unload variables
