@@ -145,6 +145,7 @@ def main():
     plt.grid(axis = 'y', color = 'gainsboro', linewidth = 0.5) 
     plt.tick_params(axis='y', which='both', left=False, right=False)
     plt.tight_layout()
+    plt.savefig('figs/alt_deorbit.png', dpi = 600)
     plt.show()
     
 def t_to_deorbit(alt,t0,  B, mu, r_e, dt, ssp_dict, ssp):

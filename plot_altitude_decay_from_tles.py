@@ -33,6 +33,8 @@ plt.rcParams['axes.labelcolor'] = 'gray'
 plt.rcParams['xtick.color'] = 'gray'
 plt.rcParams['ytick.color'] = 'gray'
 plt.rcParams['axes.edgecolor'] = 'gray'
+plt.rcParams.update({'font.size': 12})
+
 
 def main(): 
     # if density datafile already exists, load it. Otherwise, compute it and save it.
@@ -50,7 +52,7 @@ def main():
 
     # compute tracked parameters from TLEs (TRUTH)
     norad = ['4006']
-    fig, ax = plt.subplots(figsize = (3,7))
+    fig, ax = plt.subplots(figsize = (6,7))
     im = ax.imshow(np.fliplr(dens).T, aspect = 'auto', cmap='Grays', interpolation = 'gaussian',extent=[min(tvec), max(tvec), min(alt),max(alt)], norm = matplotlib.colors.LogNorm())
     ax.xaxis_date()
     fig.colorbar(im, ax=ax, orientation='horizontal', fraction=0.07,label = 'Thermospere Mass Density $[\mathregular{kg/m^3}]$')
@@ -77,6 +79,7 @@ def main():
         plt.ylim([200,1150])
 
     plt.tight_layout()
+    plt.savefig('figs/alt_decay.png', dpi = 600)
     plt.show()
  
 def compute_dens(tvec, alt):

@@ -26,7 +26,7 @@ import pickle as pkl
 
 # set font to arial
 plt.rcParams['font.family'] = 'Arial'
-plt.rcParams['font.size'] = 12
+plt.rcParams['font.size'] = 10
 # make font gray
 plt.rcParams['text.color'] = 'gray'
 plt.rcParams['axes.labelcolor'] = 'gray'
@@ -112,6 +112,7 @@ def main():
         data = loadmat(op_file)
         s_per_bin = data['s_per_bin']
         n_per_bin = data['n_per_bin']
+        mult_vec = data['mult_vec']
         
     except:
         
@@ -151,7 +152,7 @@ def main():
             n_sum_per_year[i,j] = np.sum(n_per_bin[i,j,idx_alt_min:idx_alt_max + 1])
             
     # plot the s_sum_per_year values for each dens_profile over each year
-    plt.figure(figsize = (6,5))
+    plt.figure(figsize = (8,5))
     start_year = 1947.7
     end_year = 2105
     interval = 10.93
@@ -175,7 +176,7 @@ def main():
     
     plt.plot(year, s_sum_per_year[:,0], 'k:', linewidth = 1)
     plt.axvspan(2000, 2023.5, color = 'whitesmoke')
-    plt.legend()
+    plt.legend(loc = 'lower left')
     plt.title(str(alt_min) +' - ' + str(alt_max) + ' km')
     plt.grid(axis = 'y', color = 'lightgray')
     plt.tick_params(axis='y', which='both', left=False, right=False)
@@ -185,6 +186,7 @@ def main():
     y_max = np.max(s_sum_per_year)
     plt.ylim([0, y_max*1.1])
     plt.tight_layout()
+    plt.savefig('figs/ikc.png', dpi=600)
     plt.show()    
             
     plt.figure()
@@ -192,9 +194,18 @@ def main():
     plt.hist(bins[:-1], bins=bins, weights=n_per_bin[0,0,:], label='Debris', alpha=0.5, color = 'tab:orange')
     plt.hist(bins[:-1], bins=bins, weights=s_per_bin[0,0,:], label='Satellites', alpha=0.5, color = 'tab:blue')
     plt.yscale('log')
-    plt.xlabel('Shell Lower Altitude [km]')
+    plt.xlabel('Altitude [km]')
+    plt.ylabel('Number of Characteristic Objects')      
     plt.legend()
-    plt.ylabel('Number of Characteristic Satellites')    
+    # turn off minor grid lines
+    plt.minorticks_off()
+    # on twin axes, plot mult_vec in linear scale
+    plt.twinx()
+    plt.plot(bins[:-1], mult_vec[0,:,0,0], 'r', label = 'Optimal Mult')
+    plt.ylabel('Optimized Weights', color = 'r')
+    # make y axis labels red
+    plt.tick_params(axis='y', labelcolor='r')
+    plt.savefig('figs/ikc_slice_with_weights.jpg', dpi=600)
     plt.show()
 
     

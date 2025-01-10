@@ -31,6 +31,7 @@ import matplotlib.dates as mdates
 # make arial font
 plt.rcParams['font.sans-serif'] = "Arial"
 plt.rcParams['font.family'] = "sans-serif"
+plt.rcParams.update({'font.size': 10})
 # make font gray
 plt.rcParams['text.color'] = 'gray'
 plt.rcParams['axes.labelcolor'] = 'gray'
@@ -39,6 +40,7 @@ plt.rcParams['ytick.color'] = 'gray'
 # make the box around the plot gray
 plt.rcParams['axes.edgecolor'] = 'gray'
 os.environ["SSL_CERT_FILE"] = certifi.where()
+
 
 # define the path to the NetCDF file with the scaling factors
 file = "data/DEN-CO2scaling2000-2100_v3.nc"
@@ -184,6 +186,8 @@ def main():
             pkl.dump([dens_ssp1_19_rs, dens_ssp1_26_rs, dens_ssp2_45_rs, dens_ssp3_70_rs, dens_ssp3_70_lowNTCF_rs, dens_ssp4_34_rs, dens_ssp4_60_rs, dens_ssp5_34_over_rs, dens_ssp5_85_rs, dens_rs, alt_rs, year_rs], f)
     else: 
         plot_profiles(processed_file)
+        # Plot F10.7
+        date_hist, f107_hist = project_f107()  
         
 def plot_profiles(processed_file):
 
@@ -255,7 +259,7 @@ def plot_profiles(processed_file):
     
     # make a subplot for each ssp case, showing the density multiplier as a function of altitude for each year    
     colors = ['#00798c', '#edae49', '#d1495b', 'k', '#6a4c93']
-    plt.figure(figsize = (10,3))
+    plt.figure(figsize = (10,3.4))
     plt.subplot(1,3,1)
     start_year = 1947.7
     end_year = 2105
@@ -320,10 +324,11 @@ def plot_profiles(processed_file):
     plt.setp(plt.gca().get_yticklabels(), visible=False)
     plt.xticks(rotation=45)
     plt.tight_layout()
+    plt.savefig('figs/ssp_dens_mult.png', dpi = 600)
     plt.show()
     
     # plot the density at 600 km for each SSP and the baseline
-    plt.figure(figsize = (8,4))
+    plt.figure(figsize = (10,3.6))
     start_year = 1947.7
     end_year = 2105
     interval = 10.93
@@ -341,11 +346,12 @@ def plot_profiles(processed_file):
     plt.axvspan(1995, 2023.5, color = 'whitesmoke')
     plt.xlim([1995,2105])
     plt.xlabel('Year')
-    plt.ylabel('Atmospheric Mass Density [$\mathregular{kg/m^3}$]')
+    plt.ylabel('Thermosphere Mass Density [$\mathregular{kg/m^3}$]')
     plt.grid(axis = 'y', color = 'gainsboro')    
     plt.legend()
     plt.xlim([2000,2100])
     plt.tight_layout()
+    plt.savefig('figs/ssp_dens_600km.png', dpi = 600)
     plt.show()
     
 def plot_ssp_arrays(ssp_arrays, year_rs, alt_rs, ssp_array_names, levels=[1e-14, 1e-12, 1e-10], fmt='%e'):
@@ -527,6 +533,7 @@ def project_f107():
     plt.gca().spines['bottom'].set_visible(False)
     plt.gca().spines['left'].set_visible(False)
     plt.tight_layout()
+    plt.savefig('figs/f107_hist.jpg', dpi = 600)
     plt.show()
 
     # Convert dates to numerical format for plotting
