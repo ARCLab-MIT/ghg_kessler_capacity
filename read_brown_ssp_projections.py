@@ -324,7 +324,7 @@ def plot_profiles(processed_file):
     plt.setp(plt.gca().get_yticklabels(), visible=False)
     plt.xticks(rotation=45)
     plt.tight_layout()
-    plt.savefig('figs/ssp_dens_mult.png', dpi = 600)
+    plt.savefig('figs/ssp_dens_mult.pdf', dpi = 600)
     plt.show()
     
     # plot the density at 600 km for each SSP and the baseline
@@ -351,7 +351,7 @@ def plot_profiles(processed_file):
     plt.legend()
     plt.xlim([2000,2100])
     plt.tight_layout()
-    plt.savefig('figs/ssp_dens_600km.png', dpi = 600)
+    plt.savefig('figs/ssp_dens_600km.pdf', dpi = 600)
     plt.show()
     
 def plot_ssp_arrays(ssp_arrays, year_rs, alt_rs, ssp_array_names, levels=[1e-14, 1e-12, 1e-10], fmt='%e'):
@@ -502,9 +502,6 @@ def project_f107():
     # plt.show()
     
     plt.figure(figsize=(7, 3))
-    plt.plot(date_hist, f107_hist_movmean, color='darkgray', label='Observed', linewidth=0.7)
-    plt.plot(date_rs_all, f107_rs_all, 'r--', label='Fitted', linewidth=0.7)
-    plt.plot(date_hist_combined, f107_hist_combined, 'k-', label='Modeled', linewidth=1)
     # Fill a gray background until 2023-07
     plt.axvspan(dt.datetime(1955, 1, 1), dt.datetime(2023, 7, 1), color='whitesmoke')
     plt.xlabel('Year')
@@ -526,14 +523,19 @@ def project_f107():
         plt.axvline(dt.datetime(year, month, day), color='gainsboro', linestyle='-', linewidth=0.5)
         current_year += interval
 
+    
+    plt.plot(date_hist, f107_hist_movmean, color='darkgray', label='Observed', linewidth=0.7)
+    plt.plot(date_rs_all, f107_rs_all, 'r--', label='Fitted', linewidth=0.7)
+    plt.plot(date_hist_combined, f107_hist_combined, 'k-', label='Modeled', linewidth=1)
     plt.legend()
+    
     # get rid of outer boundary of plot
     plt.gca().spines['top'].set_visible(False)
     plt.gca().spines['right'].set_visible(False)
     plt.gca().spines['bottom'].set_visible(False)
     plt.gca().spines['left'].set_visible(False)
     plt.tight_layout()
-    plt.savefig('figs/f107_hist.jpg', dpi = 600)
+    plt.savefig('figs/f107_hist.pdf', dpi = 600)
     plt.show()
 
     # Convert dates to numerical format for plotting

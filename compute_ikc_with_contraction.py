@@ -186,7 +186,7 @@ def main():
     y_max = np.max(s_sum_per_year)
     plt.ylim([0, y_max*1.1])
     plt.tight_layout()
-    plt.savefig('figs/ikc.png', dpi=600)
+    plt.savefig('figs/ikc.pdf', dpi=600)
     plt.show()    
             
     plt.figure()
@@ -205,7 +205,7 @@ def main():
     plt.ylabel('Optimized Weights', color = 'r')
     # make y axis labels red
     plt.tick_params(axis='y', labelcolor='r')
-    plt.savefig('figs/ikc_slice_with_weights.jpg', dpi=600)
+    plt.savefig('figs/ikc_slice_with_weights.pdf', dpi=600)
     plt.show()
 
     

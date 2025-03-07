@@ -55,7 +55,7 @@ def main():
     fig, ax = plt.subplots(figsize = (6,7))
     im = ax.imshow(np.fliplr(dens).T, aspect = 'auto', cmap='Grays', interpolation = 'gaussian',extent=[min(tvec), max(tvec), min(alt),max(alt)], norm = matplotlib.colors.LogNorm())
     ax.xaxis_date()
-    fig.colorbar(im, ax=ax, orientation='horizontal', fraction=0.07,label = 'Thermospere Mass Density $[\mathregular{kg/m^3}]$')
+    fig.colorbar(im, ax=ax, orientation='horizontal', fraction=0.07, label='Thermosphere Mass Density $[\\mathregular{kg/m^3}]$')
 
     # plot decay profile for each satelllite of interest
     for k in range(len(norad)): 
@@ -79,7 +79,7 @@ def main():
         plt.ylim([200,1150])
 
     plt.tight_layout()
-    plt.savefig('figs/alt_decay.png', dpi = 600)
+    plt.savefig('figs/alt_decay.pdf', dpi = 600)
     plt.show()
  
 def compute_dens(tvec, alt):
